@@ -1299,7 +1299,7 @@ ul {
 
 /* line 581, /Applications/MAMP/htdocs/palash/cl/july 2019/july/194 Restaurant/194 Restaurant html/sass/_blog.scss */
 .blog-info-link li::after {
-  content: "|";
+  /* content: "|"; */
   padding-left: 10px;
   padding-right: 10px;
 }

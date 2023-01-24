@@ -5,7 +5,6 @@ import re
 data = pd.read_csv(r'../data/Mili_bank_forest_final.csv')
 summaries_list = []
 for i in range(len(data)):
-    print(i)
     article_text = str(list(data['text'])[i])
     article_text = re.sub(r'[[0-9]*]', ' ', article_text)
     article_text = re.sub(r'\s+', ' ', article_text)
