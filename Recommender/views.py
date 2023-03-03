@@ -25,7 +25,8 @@ websites = "[.](com|net|org|io|gov|edu|me)"
 digits = "([0-9])"
 
 def split_into_sentences(text):
-    text = " " + text + "  "
+    print("TEXT:",text)
+    text = " " + str(text) + "  "
     text = text.replace("\n"," ")
     text = re.sub(prefixes,"\\1<prd>",text)
     text = re.sub(websites,"<prd>\\1",text)
@@ -87,7 +88,7 @@ def get_similar_docs(cluster,casename):
         if data1['Predicted_category'].iloc[i] == cluster and data1['File Name'].iloc[i] != casename:
             d2 = model.dv[str(i)]
             similarities.append(np.dot(matutils.unitvec(v1), matutils.unitvec(d2)))
-            files.append(data1['File Name'].iloc[i].split(r".")[0])
+            files.append(data1['File Name'].iloc[i])
     d2v_df = pd.DataFrame({'filename':files,'similarities':similarities})
     results = d2v_df.sort_values(by=['similarities'],ascending = False).head()
     result = results.to_dict()
@@ -132,13 +133,12 @@ def search(request):
     return render(request, 'search.html')
 
 def abstract_summary(casename):
-    print(casename in set(summaries_data['File Name']))
+    texts = []
     if casename in set(summaries_data['File Name']):
         case_row = summaries_data[summaries_data['File Name'] == casename].head(1)
         if not case_row['summary'].values[0] == '':
             abstract = case_row['summary'].values[0]
             return abstract
-    
     chosen_row = raw_data[raw_data['File Name'] == casename].head(1)
     if chosen_row['text'].values:
         article_text = chosen_row['text'].values[0]
@@ -146,12 +146,10 @@ def abstract_summary(casename):
     else:
         chosen_row = data1[data1['File Name'] == casename].head(1)
         article_text = chosen_row['text'].values[0]
-        texts = split_into_sentences(article_text)
-        
+        texts = split_into_sentences(article_text)    
     i = 0
     steps = 40
     summary_text = ''
-    print('here: ',texts)
     while i < len(texts):
         print(f"{round(100 * (i / len(texts)),2)}%")
         if i+steps < len(texts):
@@ -164,8 +162,10 @@ def abstract_summary(casename):
         time.sleep(20)
         i += steps
     summary_row = summaries_data[summaries_data['File Name'] == casename].head(1).index
-    summaries_data.at[summary_row,'summary'] = summary_text
-    summaries_data.to_csv(r'./data/summaries.csv')
+    if summary_text:
+        print(summary_row)
+        summaries_data.at[summary_row,'summary'] = summary_text
+        summaries_data.to_csv(r'./data/summaries.csv')
     # article_text = re.sub(r'[[0-9]*]', ' ', article_text)
     # article_text = re.sub(r'\s+', ' ', article_text)
     
@@ -213,11 +213,14 @@ def summary(request):
     # summary_row = summary_file[summary_file['File Name'] == casename].head(1)
     # summary = summary_row['summary'].values[0]
     case_row = case_details[case_details['File Name'] == casename].head(1)
-    
-    data_case_name =  case_row['Case Name'].values[0]
-    involved = case_row['Involved Personell'].values[0]
-    date_decided = case_row['Date (Decided)'].values[0]
-    court = case_row['Court'].values[0]
+    if case_row['Case Name'].values:
+        data_case_name =  case_row['Case Name'].values[0]
+    if case_row['Involved Personell'].values:
+        involved = case_row['Involved Personell'].values[0]
+    if case_row['Date (Decided)'].values:
+        date_decided = case_row['Date (Decided)'].values[0]
+    if case_row['Court'].values:
+        court = case_row['Court'].values[0]
     category = case_row['category'].values[0]
     similar_docs = get_similar_docs(category,casename)
     if category == 62:
@@ -227,8 +230,21 @@ def summary(request):
     else:
         category = 'Environment'
     abstract = abstract_summary(casename)
-    if math.isnan(court): court = ''
-    if  math.isnan(date_decided): date_decided = ''
-    if  math.isnan(involved): involved = ''
-    if  math.isnan(data_case_name): data_case_name = ''
+    try:
+        if math.isnan(court): court = ''
+    except:
+        pass
+    try:
+        if  math.isnan(date_decided): date_decided = ''
+    except:
+        pass
+    try:
+        if  math.isnan(involved): involved = ''
+    except:
+        pass
+    try:
+        if  math.isnan(data_case_name): data_case_name = ''
+    except:
+        pass
+    
     return render(request, 'summary.html',{'abstract_summary':abstract,'similar_docs':similar_docs,'data_case_name':data_case_name,'involved':involved,'date_decided':date_decided,'court':court,'category':category,'query':query})
