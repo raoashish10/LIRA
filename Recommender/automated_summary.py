@@ -5,9 +5,9 @@ import time
 
 data1 = pd.read_csv(r'../data/raw.csv',error_bad_lines=False, engine="python")
 summaries_data = pd.read_csv(r'../data/summaries.csv')
-client = nlpcloud.Client("bart-large-cnn", "f9c60f3620a2bdba081394bd77f44445c2a019b0")
+client = nlpcloud.Client("bart-large-cnn", "0353d3846980d048ff8a4958e71fe558bb0d6ab6")
 
-for j in range(68,len(data1)):
+for j in range(95,len(data1)):
     text = data1['text'].iloc[j]
     casename = data1['File Name'].iloc[j]
     texts = sent_tokenize(text)
@@ -16,6 +16,7 @@ for j in range(68,len(data1)):
     summary_text = ''
     print(j)
     print(len(texts))
+    print(casename)
     while i < len(texts):
         print(f"{round(100 * (i / len(texts)),2)}%")
         if i+steps < len(texts):

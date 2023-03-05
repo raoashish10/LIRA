@@ -15,6 +15,7 @@ from gensim import matutils
 from transformers import PegasusForConditionalGeneration, PegasusTokenizer
 import torch
 import nlpcloud
+import requests
 
 alphabets= "([A-Za-z])"
 prefixes = "(Mr|St|Mrs|Ms|Dr)[.]"
@@ -23,6 +24,7 @@ starters = "(Mr|Mrs|Ms|Dr|Prof|Capt|Cpt|Lt|He\s|She\s|It\s|They\s|Their\s|Our\s|
 acronyms = "([A-Z][.][A-Z][.](?:[A-Z][.])?)"
 websites = "[.](com|net|org|io|gov|edu|me)"
 digits = "([0-9])"
+url = "https://api.meaningcloud.com/summarization-1.0"
 
 def split_into_sentences(text):
     print("TEXT:",text)
@@ -125,11 +127,9 @@ def search(request):
         d2v_df = pd.DataFrame({'filename':list(data1['File Name']),'similarities':similarities})
         results = d2v_df.sort_values(by=['similarities'],ascending = False).head()
         request.session['result'] = results.to_dict()
-        response = redirect('results') # django.http.HttpResponse
+        response = redirect('results')
         response.set_cookie(key='query', value=query)
         return response
-        # return redirect('results')
-        # return HttpResponse(results)
     return render(request, 'search.html')
 
 def abstract_summary(casename):
@@ -153,55 +153,23 @@ def abstract_summary(casename):
     while i < len(texts):
         print(f"{round(100 * (i / len(texts)),2)}%")
         if i+steps < len(texts):
-            res = client.summarization(''.join(texts[i:i + steps]))
-            summary_text += res['summary_text'] + ' '
+            input_txt = ''.join(texts[i:i + steps])
+            # 
         else:
-            res = client.summarization(''.join(texts[i:]))
-            summary_text += res['summary_text'] + ' '
-        print("Sleep time")
-        time.sleep(20)
+            input_txt = ''.join(texts[i:])
+        payload={
+        'key': '1a7b0a96fb81d6c881ddc7be188098ab',
+        'txt': input_txt,
+        'sentences': (40 * len(input_txt))//100
+        }
+        response = requests.post(url, data=payload).json()
+        summary_text += response['summary'] + ' '
         i += steps
     summary_row = summaries_data[summaries_data['File Name'] == casename].head(1).index
     if summary_text:
         print(summary_row)
         summaries_data.at[summary_row,'summary'] = summary_text
         summaries_data.to_csv(r'./data/summaries.csv')
-    # article_text = re.sub(r'[[0-9]*]', ' ', article_text)
-    # article_text = re.sub(r'\s+', ' ', article_text)
-    
-
-    # formatted_article_text = re.sub(r'\s+', ' ', article_text)
-    # texts = sent_tokenize(formatted_article_text)
-    # tgt_text_list = []
-    # i = 0
-    # steps = 2
-    # # res = ''
-    # summary_text = ''
-    # while i < len(texts):
-    #     if i+steps < len(texts):
-    #        res = client.summarization(''.join(texts[i:i + steps]))
-    #        summary_text += res['summary_text'] + ' '
-    #     else:
-    #         res = client.summarization(''.join(texts[i:]))
-    #         summary_text += res['summary_text'] + ' '
-        
-    #     i += steps
-
-    # #         print(i)
-    #         for j in texts[i:i+steps]:
-    #             print('\n\n',j)
-    #         batch = tokenizer.prepare_seq2seq_batch(''.join(texts[i:i+steps]), truncation=True, padding='longest', return_tensors="pt").to(torch_device)
-    #         translated = model.generate(**batch)
-    #         tgt_text = tokenizer.batch_decode(translated, skip_special_tokens=True)
-    #         if tgt_text not in tgt_text_list:
-    #             tgt_text_list.extend(tgt_text)
-    #     else:
-    #         batch = tokenizer.prepare_seq2seq_batch(''.join(texts[i:]), truncation=True, padding='longest', return_tensors="pt").to(torch_device)
-    #         translated = model.generate(**batch)
-    #         tgt_text = tokenizer.batch_decode(translated, skip_special_tokens=True)
-    #         if tgt_text not in tgt_text_list:
-    #             tgt_text_list.extend(tgt_text)
-    #     i = i + steps
     return summary_text
 
 def summary(request):
