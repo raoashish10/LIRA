@@ -9,12 +9,14 @@ import pandas as pd
 import re
 import math
 import time
+import json
 import nlpcloud
 import numpy as np
 from gensim import matutils 
 from transformers import PegasusForConditionalGeneration, PegasusTokenizer
 import torch
 import nlpcloud
+import os
 import requests
 
 alphabets= "([A-Za-z])"
@@ -102,7 +104,9 @@ def get_similar_docs(cluster,casename):
     return file_similarities
 
 def results(request):
-    result = request.session['result']
+    print(os.getcwd())
+    with open('./result_cache.json') as json_file:
+        result = json.load(json_file)
     file_dict = result['filename']
     similarities_dict = result['similarities']
     file_similarities = []
@@ -126,7 +130,8 @@ def search(request):
             similarities.append( round( 100 * np.dot(matutils.unitvec(v1), matutils.unitvec(d2)),2) )
         d2v_df = pd.DataFrame({'filename':list(data1['File Name']),'similarities':similarities})
         results = d2v_df.sort_values(by=['similarities'],ascending = False).head()
-        request.session['result'] = results.to_dict()
+        with open("./result_cache.json", "w") as fp:   #Pickling
+            json.dump(results.to_dict(), fp)
         response = redirect('results')
         response.set_cookie(key='query', value=query)
         return response
@@ -160,7 +165,7 @@ def abstract_summary(casename):
         payload={
         'key': '1a7b0a96fb81d6c881ddc7be188098ab',
         'txt': input_txt,
-        'sentences': (40 * len(input_txt))//100
+        'sentences': (20 * len(input_txt))//100
         }
         response = requests.post(url, data=payload).json()
         summary_text += response['summary'] + ' '
